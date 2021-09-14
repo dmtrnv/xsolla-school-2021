@@ -17,7 +17,8 @@ namespace ProductApi.Migrations
                     Manufacturer_Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Type_Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Subtype_Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Cost = table.Column<decimal>(type: "money", nullable: false)
+                    Cost = table.Column<decimal>(type: "money", nullable: false),
+                    Count = table.Column<int>(type: "int", nullable: false, defaultValue: 0)
                 },
                 constraints: table =>
                 {
@@ -27,19 +28,19 @@ namespace ProductApi.Migrations
                         column: x => x.Manufacturer_Id,
                         principalTable: "Product_Manufacturer",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.NoAction);
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Products_Product_Subtype_Subtype_Id",
                         column: x => x.Subtype_Id,
                         principalTable: "Product_Subtype",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.NoAction);
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Products_Product_Type_Type_Id",
                         column: x => x.Type_Id,
                         principalTable: "Product_Type",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.NoAction);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(

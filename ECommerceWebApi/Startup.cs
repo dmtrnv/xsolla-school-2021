@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using ProductApi.Data;
+using Serilog;
 
 namespace ProductApi
 {
@@ -28,10 +29,14 @@ namespace ProductApi
 
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-            services.AddControllers().AddControllersAsServices();
+            services.AddScoped<IRepositoryWrapper, RepositoryWrapper>();
+
+            services.AddControllers();
 
             services.AddSwaggerGen(options =>
             {
+                options.EnableAnnotations();
+
                 options.SwaggerDoc("v1", new OpenApiInfo
                 {
                     Version = "v1",
@@ -43,7 +48,6 @@ namespace ProductApi
                         Url = new Uri("https://github.com/dmtrnv")
                     }
                 });
-
             });
         }
 
@@ -55,7 +59,7 @@ namespace ProductApi
             }
 
             app.UseHttpsRedirection();
-
+            
             app.UseSwagger();
 
             app.UseSwaggerUI(options =>
@@ -63,6 +67,8 @@ namespace ProductApi
                 options.SwaggerEndpoint("/swagger/v1/swagger.json", "Product API");
                 options.RoutePrefix = string.Empty;
             });
+
+            app.UseSerilogRequestLogging();
 
             app.UseRouting();
 

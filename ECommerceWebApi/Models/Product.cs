@@ -20,5 +20,7 @@ namespace ProductApi.Models
         public ProductSubtype Subtype { get; set; }
 
         public decimal Cost { get; set; }
+
+        public int Count { get; set; }
     }
 }

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using ProductApi.Data;
 using ProductApi.DataTransferObjects;
 using ProductApi.Models;
@@ -16,21 +17,24 @@ namespace ProductApi.Controllers
     [ApiController]
     public class ProductsManufacturersController : ControllerBase
     {
-        private readonly ProductApiContext _context;
+        private readonly IRepositoryWrapper _repository;
         private readonly IMapper _mapper;
+        private readonly ILogger<ProductsManufacturersController> _logger;
 
-        public ProductsManufacturersController(ProductApiContext context, IMapper mapper)
+        public ProductsManufacturersController(IRepositoryWrapper repository, IMapper mapper, ILogger<ProductsManufacturersController> logger)
         {
-            _context = context;
+            _repository = repository;
             _mapper = mapper;
+            _logger = logger;
         }
 
         // GET api/products/manufacturers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ProductManufacturerReadDto>>> GetAllProductsManufacturersAsync()
         {
-            var manufacturers = await _context.Manufacturers.ToListAsync();
+            var manufacturers = await _repository.Manufacturers.GetAllManufacturersAsync();
 
+            _logger.LogInformation("Repository: successfully returned list of all manufacturers");
             return Ok(_mapper.Map<IEnumerable<ProductManufacturerReadDto>>(manufacturers));
         }
 
@@ -38,12 +42,14 @@ namespace ProductApi.Controllers
         [HttpGet("{id}", Name = nameof(GetProductManufacturerByIdAsync))]
         public async Task<ActionResult<ProductManufacturerReadDto>> GetProductManufacturerByIdAsync(Guid id)
         {
-            var manufacturer = await _context.Manufacturers.FirstOrDefaultAsync(m => m.Id == id);
+            var manufacturer = await _repository.Manufacturers.GetManufacturerByIdAsync(id);
             if (manufacturer == null)
             {
+                _logger.LogError($"Repository: manufacturer with id={id} is not found");
                 return NotFound();
             }
 
+            _logger.LogInformation($"Repository: successfully returned manufacturer with id={id}");
             return Ok(_mapper.Map<ProductManufacturerReadDto>(manufacturer));
         }
 
@@ -54,22 +60,25 @@ namespace ProductApi.Controllers
             var manufacturer = _mapper.Map<ProductManufacturer>(manufacturerDto);
             if (manufacturer.Name == null || manufacturer.Abbreviation == null)
             {
-                return BadRequest("\"Name\" or \"Abbreviation\" is null.");
+                _logger.LogError("Repository: could not create manufacturer, because manufacturer's \"Name\" or \"Abbreviation\" is null");
+                return BadRequest("Manufacturer's \"Name\" or \"Abbreviation\" is null");
             }
 
-            await _context.Manufacturers.AddAsync(manufacturer);
+            _repository.Manufacturers.CreateManufacturer(manufacturer);
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _repository.SaveAsync();
             }
             catch (DbUpdateException ex) when ((ex.InnerException as SqlException)?.Number == 2627)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "Possibly \"Abbreviation\" is duplicated.");
+                _logger.LogError("Repository: an error occurred while creating manufacturer. Possibly manufacturer's \"Abbreviation\" is duplicated");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Possibly manufacturer's \"Abbreviation\" is duplicated");
             }
 
             var manufacturerReadDto = _mapper.Map<ProductManufacturerReadDto>(manufacturer);
 
+            _logger.LogInformation("Repository: successfully created manufacturer");
             return CreatedAtAction(
                 actionName: "GetProductManufacturerById", 
                 controllerName: "ProductsManufacturers",
@@ -81,17 +90,28 @@ namespace ProductApi.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult> UpdateProductManufacturerAsync(Guid id, ProductManufacturerCreateUpdateDto manufacturerDto)
         {
-            var manufacturer = await _context.Manufacturers.FirstOrDefaultAsync(m => m.Id == id);
+            var manufacturer = await _repository.Manufacturers.GetManufacturerByIdAsync(id);
             if (manufacturer == null)
             {
+                _logger.LogError($"Repository: manufacturer with id={id} is not found");
                 return NotFound();
             }
 
             _mapper.Map(manufacturerDto, manufacturer);
 
-            _context.Manufacturers.Update(manufacturer);
-            await _context.SaveChangesAsync();
+            _repository.Manufacturers.UpdateManufacturer(manufacturer);
 
+            try
+            {
+                await _repository.SaveAsync();
+            }
+            catch (DbUpdateException ex) when ((ex.InnerException as SqlException)?.Number == 2627)
+            {
+                _logger.LogError("Repository: an error occurred while updating manufacturer. Possibly manufacturer's \"Abbreviation\" is duplicated");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Possibly manufacturer's \"Abbreviation\" is duplicated");
+            }
+
+            _logger.LogInformation($"Repository: successfully updated manufacturer with id={id}");
             return NoContent();
         }
 
@@ -99,23 +119,26 @@ namespace ProductApi.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> RemoveProductManufacturerAsync(Guid id)
         {
-            var manufacturer = await _context.Manufacturers.FirstOrDefaultAsync(m => m.Id == id);
+            var manufacturer = await _repository.Manufacturers.GetManufacturerByIdAsync(id);
             if (manufacturer == null)
             {
+                _logger.LogError($"Repository: manufacturer with id={id} is not found");
                 return NotFound();
             }
 
-            _context.Manufacturers.Remove(manufacturer);
+            _repository.Manufacturers.DeleteManufacturer(manufacturer);
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _repository.SaveAsync();
             }
             catch (DbUpdateException ex) when ((ex.InnerException as SqlException)?.Number == 547)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "Possibly manufacturer you are trying to remove is referenced.");
+                _logger.LogError("Repository: an error occurred while deleting manufacturer. Possibly manufacturer is referenced");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Possibly manufacturer is referenced");
             }
 
+            _logger.LogInformation($"Repository: successfully deleted manufacturer with id={id}");
             return NoContent();
         }
     }

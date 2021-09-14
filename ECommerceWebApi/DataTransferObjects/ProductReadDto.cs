@@ -17,5 +17,7 @@ namespace ProductApi.DataTransferObjects
         public ProductSubtypeCreateUpdateDto Subtype { get; set; }
 
         public decimal Cost { get; set; }
+
+        public int Count { get; set; }
     }
 }

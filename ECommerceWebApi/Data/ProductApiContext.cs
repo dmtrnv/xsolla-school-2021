@@ -18,6 +18,10 @@ namespace ProductApi.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Product>(ProductConfigure);
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.Name)
+                .IsUnique();
+
             modelBuilder.Entity<ProductManufacturer>(ManufacturerConfigure);
             modelBuilder.Entity<ProductType>(TypeConfigure);
             modelBuilder.Entity<ProductSubtype>(SubtypeConfigure);
@@ -54,6 +58,9 @@ namespace ProductApi.Data
             builder.Property(p => p.Cost)
                 .HasColumnType("money")
                 .IsRequired();
+
+            builder.Property(p => p.Count)
+                .HasDefaultValue(0);
         }
 
         private void ManufacturerConfigure(EntityTypeBuilder<ProductManufacturer> builder)

@@ -10,7 +10,7 @@ using ProductApi.Data;
 namespace ProductApi.Migrations
 {
     [DbContext(typeof(ProductApiContext))]
-    [Migration("20210718070354_AddProductDbSet")]
+    [Migration("20210831164033_AddProductDbSet")]
     partial class AddProductDbSet
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -29,6 +29,11 @@ namespace ProductApi.Migrations
 
                     b.Property<decimal>("Cost")
                         .HasColumnType("money");
+
+                    b.Property<int>("Count")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<Guid>("ManufacturerId")
                         .HasColumnType("uniqueidentifier")
@@ -143,7 +148,7 @@ namespace ProductApi.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ProductApi.Models.ProductType", "TypeName")
+                    b.HasOne("ProductApi.Models.ProductType", "Type")
                         .WithMany()
                         .HasForeignKey("TypeId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -153,7 +158,7 @@ namespace ProductApi.Migrations
 
                     b.Navigation("Subtype");
 
-                    b.Navigation("TypeName");
+                    b.Navigation("Type");
                 });
 #pragma warning restore 612, 618
         }
