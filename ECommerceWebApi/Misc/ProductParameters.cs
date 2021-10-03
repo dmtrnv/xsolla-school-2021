@@ -1,4 +1,6 @@
-﻿namespace ProductApi.Misc
+﻿using System;
+
+namespace ProductApi.Misc
 {
     public class ProductParameters
     {

@@ -31,11 +31,6 @@ namespace ProductApi.Data
 
         public IQueryable<Product> GetProductsFilteredByCostWithDetails(ProductParameters parameters)
         {
-            if (parameters == null)
-            {
-                throw new ArgumentNullException(nameof(parameters));
-            }
-
             return FindByCondition(p => (p.Cost >= parameters.MinCost) && (p.Cost <= parameters.MaxCost))
                 .Include(p => p.Manufacturer)
                 .Include(p => p.Type)
@@ -45,11 +40,6 @@ namespace ProductApi.Data
         
         public IQueryable<Product> GetProductsFilteredByCostAndTypeNameWithDetails(ProductParameters parameters)
         {
-            if (parameters == null)
-            {
-                throw new ArgumentNullException(nameof(parameters));
-            }
-
             return FindByCondition(p => (p.Cost >= parameters.MinCost) && (p.Cost <= parameters.MaxCost))
                 .Include(p => p.Type)
                 .Where(p => p.Type.Name == parameters.TypeName)
@@ -88,6 +78,7 @@ namespace ProductApi.Data
                 .FirstOrDefaultAsync();
         }
 
+        // Here method's parameter "product" contains only fields that available in ProductCreateUpdateDto.
         public async Task CreateProductAsync(Product product)
         {
             await SetProductManufacturerCorrect(product);
@@ -99,11 +90,15 @@ namespace ProductApi.Data
             Create(product);
         }
 
+        // Here method's parameter "product" contains only fields that available in ProductCreateUpdateDto.
         public async Task UpdateProductAsync(Product product)
         {
+            product.ManufacturerId = Guid.Empty;
             product.Manufacturer.Id = Guid.Empty;
+            product.TypeId = Guid.Empty;
             product.Type.Id = Guid.Empty;
             product.Type.Code = default;
+            product.SubtypeId = Guid.Empty;
             product.Subtype.Id = Guid.Empty;
             product.Subtype.Code = default;
 
@@ -130,6 +125,7 @@ namespace ProductApi.Data
             }
 
             product.Manufacturer = await Context.Manufacturers.FirstOrDefaultAsync(m => m.Name == product.Manufacturer.Name);
+            product.ManufacturerId = product.Manufacturer.Id;
         }
 
         private async Task SetProductTypeCorrect(Product product)
@@ -141,6 +137,7 @@ namespace ProductApi.Data
             }
 
             product.Type = await Context.Types.FirstOrDefaultAsync(t => t.Name == product.Type.Name);
+            product.TypeId = product.Type.Id;
         }
 
         private async Task SetProductSubtypeCorrect(Product product)
@@ -152,6 +149,7 @@ namespace ProductApi.Data
             }
 
             product.Subtype = await Context.Subtypes.FirstOrDefaultAsync(s => s.Name == product.Subtype.Name);
+            product.SubtypeId = product.Subtype.Id;
         }
     }
 }
