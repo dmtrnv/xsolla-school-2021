@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Reflection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -35,8 +37,6 @@ namespace ProductApi
 
             services.AddSwaggerGen(options =>
             {
-                options.EnableAnnotations();
-
                 options.SwaggerDoc("v1", new OpenApiInfo
                 {
                     Version = "v1",
@@ -48,6 +48,10 @@ namespace ProductApi
                         Url = new Uri("https://github.com/dmtrnv")
                     }
                 });
+
+                var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+                options.IncludeXmlComments(xmlPath);
             });
         }
 

@@ -11,10 +11,10 @@ using ProductApi.Data;
 using ProductApi.DataTransferObjects;
 using ProductApi.Misc;
 using ProductApi.Models;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace ProductApi.Controllers
 {
+    [Produces("application/json")]
     [Route("api/products")]
     [ApiController]
     public class ProductsController : ControllerBase
@@ -34,12 +34,20 @@ namespace ProductApi.Controllers
         }
 
         // GET api/products
+        /// <summary>
+        /// Get all products from database include product's manufacturer, type and subtype.
+        /// </summary>
+        /// <returns>IEnumerable of ProductReadDto</returns>
+        /// <response code="200">Returns existing products</response>
+        /// <response code="400">If product parameters cost is not valid (minCost > maxCost)</response>
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<IEnumerable<ProductReadDto>>> GetAllProductsAsync([FromQuery]ProductParameters parameters)
         {
             if (!parameters.ValidCost)
             {
-                return BadRequest("MaxCost < MinCost, should be the other way around");
+                return ValidationProblem("MaxCost < MinCost, should be the other way around");
             }
 
             var products = (parameters.TypeName == null) ? 
@@ -66,7 +74,15 @@ namespace ProductApi.Controllers
         }
         
         // GET api/products/{idOrSku}
+        /// <summary>
+        /// Get product with special id or sku from database include product's manufacturer, type and subtype.
+        /// </summary>
+        /// <returns>ProductReadDto</returns>
+        /// <response code="200">Returns existing product</response>
+        /// <response code="404">If product with actual id or sku is not found</response>
         [HttpGet("{idOrSku}", Name = nameof(GetProductByIdOrSkuAsync))]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ProductReadDto>> GetProductByIdOrSkuAsync(string idOrSku)
         {
             var product = Guid.TryParse(idOrSku, out var id) ?
@@ -84,21 +100,30 @@ namespace ProductApi.Controllers
         }
 
         // POST api/products
-        [SwaggerOperation(Summary = "Creates new product.")]
+        /// <summary>
+        /// Creates a Product.
+        /// </summary>
+        /// <returns>A newly created product as ProductReadDto</returns>
+        /// <response code="201">Returns the newly created product with it's location</response>
+        /// <response code="400">If product's "Name" or "Manufacturer" or "Type" or "Subtype" is null or product's "Count" less or equal to 0; If product with actual name is already exists</response>
+        /// <response code="500">If an error occurred while creating the product, maybe "Manufacturer.Abbreviation" value is already in use</response>
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<ProductReadDto>> CreateProductAsync(ProductCreateUpdateDto productDto)
         {
             var product = _mapper.Map<Product>(productDto);
             if (product.Name == null || product.Manufacturer == null || product.Type == null || product.Subtype == null || product.Count <= 0)
             {
-                _logger.LogError("Repository: could not create product, because product's \"Name\" or \"Manufacturer\" or \"TypeName\" or \"Subtype\" is null or product's \"Count\"<= 0");
-                return BadRequest("\"Name\" or \"Manufacturer\" or \"TypeName\" or \"Subtype\" is null or product's \"Count\"<= 0");
+                _logger.LogError("Repository: could not create product, because product's \"Name\" or \"Manufacturer\" or \"Type\" or \"Subtype\" is null or product's \"Count\"<= 0");
+                return ValidationProblem("\"Name\" or \"Manufacturer\" or \"Type\" or \"Subtype\" is null or product's \"Count\"<= 0");
             }
 
             if ((await _repository.Products.FindByCondition(p => p.Name.Equals(product.Name)).FirstOrDefaultAsync()) != null)
             {
                 _logger.LogError($"Repository: could not create product, because product with \"Name\"= {product.Name} is already exists");
-                return BadRequest($"Product with \"Name\"= {product.Name} is already exists");
+                return ValidationProblem($"Product with \"Name\"= {product.Name} is already exists");
             }
 
             try
@@ -123,14 +148,25 @@ namespace ProductApi.Controllers
         }
 
         // PUT api/products/{idOrSku}
-        [SwaggerOperation(Summary = "Updates all fields of the existing product.")]
+        /// <summary>
+        /// Updates all the fields of the existing product.
+        /// </summary>
+        /// <returns>No content</returns>
+        /// <response code="204">If product successfully updated</response>
+        /// <response code="400">If product's "Name" or "Manufacturer" or "Type" or "Subtype" is null or product's "Count" less or equal to 0; If product with actual name is already exists</response>
+        /// <response code="404">If product with actual id or sku is not found</response>
+        /// <response code="500">If an error occurred while updating product, maybe "Manufacturer.Abbreviation" value is already in use</response>
         [HttpPut("{idOrSku}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> UpdateProductAsync(string idOrSku, ProductCreateUpdateDto productDto)
         {
             if (productDto.Name == null || productDto.Manufacturer == null || productDto.Type == null || productDto.Subtype == null || productDto.Count < 0)
             {
                 _logger.LogError("Repository: could not update product, because product's \"Name\" or \"Manufacturer\" or \"TypeName\" or \"Subtype\" is null or product's \"Count\"< 0");
-                return BadRequest("\"Name\" or \"Manufacturer\" or \"TypeName\" or \"Subtype\" is null or product's \"Count\"< 0");
+                return ValidationProblem("\"Name\" or \"Manufacturer\" or \"TypeName\" or \"Subtype\" is null or product's \"Count\"< 0");
             }
 
             var existingProduct = Guid.TryParse(idOrSku, out var id) ?
@@ -162,8 +198,17 @@ namespace ProductApi.Controllers
         }
 
         // PUT api/products/{idOrSku}_{positiveOrNegativeValue}
-        [SwaggerOperation(Summary = "Adds positiveOrNegativeValue value to field \"count\" of existing product.")]
+        /// <summary>
+        /// Adds positiveOrNegativeValue value to field "count" of existing product.
+        /// </summary>
+        /// <returns>No content</returns>
+        /// <response code="204">If product's count successfully updated</response>
+        /// <response code="404">If product with actual id or sku is not found</response>
+        /// <response code="500">If an error occurred while updating the product</response>
         [HttpPut("{idOrSku}_{positiveOrNegativeValue}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> ChangeProductCountAsync(string idOrSku, int positiveOrNegativeValue)
         {
             var existingProduct = Guid.TryParse(idOrSku, out var id) ?
@@ -200,8 +245,18 @@ namespace ProductApi.Controllers
         }
 
         // DELETE api/products/{idOrSku}
-        [SwaggerOperation(Summary = "Completely removes product from database")]
+        //[SwaggerOperation(Summary = "Completely removes product from database")]
+        /// <summary>
+        /// Removes the product from database.
+        /// </summary>
+        /// <returns>No content</returns>
+        /// <response code="204">If product successfully deleted</response>
+        /// <response code="404">If product with actual id or sku is not found</response>
+        /// <response code="500">If an error occurred while deleting the product</response>
         [HttpDelete("{idOrSku}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> RemoveProductAsync(string idOrSku)
         {
             var product = Guid.TryParse(idOrSku, out var id) ?
