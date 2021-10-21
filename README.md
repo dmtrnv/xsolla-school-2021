@@ -1,3 +1,6 @@
+## Задание
+https://github.com/xsolla/xsolla-school-backend-2021
+
 ## Требования
 * .NET Core 3.1
 * Microsoft SQL Server Express LocalDB
